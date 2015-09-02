@@ -31,7 +31,7 @@
 #include "OrientationConverter.h"
 
 typedef std::vector<std::string> FileNameList;
-
+ 
 class MyGraphicsContext {
     public:
         MyGraphicsContext()
@@ -538,6 +538,7 @@ static void usage( const char *prog, const char *msg )
         "                         where <plugin> is the plugin's full path and file name." << std::endl;
 }
 
+osg::Node* includeNodeWithExternal(osg::Node* no);
 
 int main( int argc, char **argv )
 {
@@ -553,7 +554,7 @@ int main( int argc, char **argv )
     //arguments.getApplicationUsage()->addCommandLineOption("--formats","List supported file formats");
     //arguments.getApplicationUsage()->addCommandLineOption("--plugins","List database olugins");
 
-
+	osg::setNotifyLevel(osg::DEBUG_FP);
     // if user request help write it out to cout.
     if (arguments.read("-h") || arguments.read("--help"))
     {
@@ -783,7 +784,6 @@ int main( int argc, char **argv )
 
     osg::ref_ptr<osg::Node> root = osgDB::readNodeFiles(fileNames);
 
-    if (root.valid())
     {
         osg::Timer_t endTick = osg::Timer::instance()->tick();
         osg::notify(osg::INFO)<<"Time to load files "<<osg::Timer::instance()->delta_m(startTick, endTick)<<" ms"<<std::endl;
@@ -802,6 +802,9 @@ int main( int argc, char **argv )
         root->accept(atv);
     }
 
+	includeNodeWithExternal(root);
+
+	
     if ( root.valid() )
     {
 
@@ -877,3 +880,52 @@ int main( int argc, char **argv )
 
     return 0;
 }
+
+#include <osg/ValueObject>
+
+osg::Node* includeNodeWithExternal(osg::Node* no)
+{
+	if (no != NULL)
+	{
+		if (no->asGroup())
+		{
+			std::string path = "";
+			no->getUserValue("linked_object", path);
+			if (path.length())
+			{
+				osg::Node* n = osgDB::readNodeFile(path);
+				no->asGroup()->addChild(n);
+			}
+
+			for (int i = 0; i < no->asGroup()->getNumChildren(); i++)
+			{
+				includeNodeWithExternal(no->asGroup()->getChild(i));
+			}
+		}
+	}
+
+	return NULL;
+}
+
+/*
+osg::Node* includeNodeWithExternal(osg::Node* no, std::string name)
+{
+	if (no != NULL)
+	{
+		if (no->getName() == name)
+			return no;
+		if (no->asGroup())
+		{
+			for (int i = 0; i < no->asGroup()->getNumChildren(); i++)
+			{
+
+				osg::Node* n = includeNodeWithExternal(no->asGroup()->getChild(i), name);
+				if (n)
+					return n;
+			
+			}
+		}
+	}
+
+	return NULL;
+}*/
